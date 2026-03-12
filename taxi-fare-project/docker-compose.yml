@@ -1,0 +1,40 @@
+# ═══════════════════════════════════════════════════════════════
+#  FARECAST · docker-compose.yml
+#  Place at: taxi-fare-project/docker-compose.yml
+#
+#  Single container: FastAPI serves both the API and React UI.
+#  Host port 8080 → container port 8000
+#  (avoids conflict with local FastAPI running on 8000)
+#
+#  Visit: http://localhost:8080
+# ═══════════════════════════════════════════════════════════════
+
+version: "3.9"
+
+services:
+  farecast:
+    build:
+      context:    .
+      dockerfile: Dockerfile
+    image: farecast:latest
+    container_name: farecast-app
+    restart: unless-stopped
+
+    ports:
+      - "8080:8000"      # host:container — use 8080 to avoid port conflicts
+
+    volumes:
+      # Mount models so you can swap .pkl files without rebuilding
+      - ./models:/app/models:ro
+
+    environment:
+      PYTHONUNBUFFERED:        "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 20s
+      timeout:  5s
+      retries:  3
+      start_period: 15s

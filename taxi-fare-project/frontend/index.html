@@ -1,13 +1,60 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+
+    <!-- ── Identity ─────────────────────────────────────────────────────── -->
+    <title>FARECAST — NYC Taxi Fare Predictor</title>
+    <meta name="description" content="LightGBM-powered fare estimation for NYC taxi trips. Get instant, accurate fare predictions with confidence intervals." />
+    <meta name="author"      content="FARECAST" />
+    <meta name="theme-color" content="#ffdc3c" />
+
+    <!-- ── Favicon: inline SVG gold diamond matching the ◈ nav logo ─────── -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='8' y='8' width='16' height='16' fill='%23ffdc3c' transform='rotate(45 16 16)'/%3E%3Crect x='11' y='11' width='10' height='10' fill='%2307090e' transform='rotate(45 16 16)'/%3E%3C/svg%3E" />
+
+    <!-- ── Open Graph (social sharing) ──────────────────────────────────── -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:title"       content="FARECAST — NYC Taxi Fare Predictor" />
+    <meta property="og:description" content="ML-powered fare estimation. Enter trip details, get an instant prediction with confidence intervals." />
+    <meta property="og:locale"      content="en_US" />
+
+    <!-- ── Preconnect to Google Fonts (loaded in App.css) ────────────────── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- ── Prevent flash of unstyled content: lock bg before React mounts ── -->
+    <style>
+      html, body, #root {
+        margin: 0; padding: 0;
+        background-color: #07090e; /* matches --bg in App.css */
+        color: #dde2ee;            /* matches --text in App.css */
+        min-height: 100vh;
+      }
+    </style>
   </head>
+
   <body>
+    <!-- React mounts here -->
     <div id="root"></div>
+
+    <!-- ── No-JS fallback ────────────────────────────────────────────────── -->
+    <noscript>
+      <style>
+        .noscript-msg {
+          display: flex; align-items: center; justify-content: center;
+          min-height: 100vh;
+          font-family: 'Courier New', monospace;
+          font-size: 13px; letter-spacing: 0.1em;
+          color: #ffdc3c; background: #07090e;
+          text-align: center; padding: 40px;
+        }
+      </style>
+      <div class="noscript-msg">
+        ◈ FARECAST requires JavaScript to run.<br />Please enable it in your browser settings.
+      </div>
+    </noscript>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

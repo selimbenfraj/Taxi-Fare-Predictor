@@ -1,111 +1,163 @@
-import { useState } from 'react'
-import axios from 'axios'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import Nav from './components/Nav'
+import HomePage from './pages/HomePage'
+import PredictPage from './pages/PredictPage'
+import AboutPage from './pages/AboutPage'
 import './App.css'
 
-function App() {
-  // Default values for the form
-  const [formData, setFormData] = useState({
-    PULocationID: 263,
-    DOLocationID: 161,
-    passenger_count: 1,
-    trip_distance: 2.5,
-    trip_duration_min: 15.0,
-    pickup_hour: 14,
-    pickup_dayofweek: 2,
-    RatecodeID: 1,
-    payment_type: 1,
-    pickup_month: 5,
-    is_weekend: 0
-  })
+const PAGES = ['home', 'predict', 'about']
 
-  const [result, setResult] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+// ── Page transition shell ─────────────────────────────────────────────────────
+function PageShell({ children, pageKey, isActive, direction }) {
+  const [render, setRender]   = useState(isActive)
+  const [visible, setVisible] = useState(false)
+  const timerRef = useRef(null)
 
-  // Update state when user types in the inputs
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: parseFloat(e.target.value) || 0
-    })
-  }
-
-  // Send data to FastAPI backend when button is clicked
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    setResult(null)
-    
-    try {
-      const response = await axios.post('http://127.0.0.1:8000/predict', formData)
-      setResult(response.data)
-    } catch (err) {
-      console.error("API Error:", err)
-      setError("❌ Could not connect to the backend. Is your FastAPI server running?")
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    if (isActive) {
+      setRender(true)
+      timerRef.current = requestAnimationFrame(() =>
+        requestAnimationFrame(() => setVisible(true))
+      )
+    } else {
+      setVisible(false)
+      timerRef.current = setTimeout(() => setRender(false), 450)
     }
-  }
+    return () => {
+      clearTimeout(timerRef.current)
+      cancelAnimationFrame(timerRef.current)
+    }
+  }, [isActive])
+
+  if (!render) return null
 
   return (
-    <div className="container">
-      <div className="card">
-        <h1>🚕 Taxi Fare Predictor</h1>
-        <p className="subtitle">Enter trip details to estimate the fare.</p>
-        
-        <form onSubmit={handleSubmit} className="form-layout">
-          
-          <div className="input-group">
-            <label>Distance (miles):</label>
-            <input 
-              type="number" 
-              step="0.1" 
-              name="trip_distance" 
-              value={formData.trip_distance} 
-              onChange={handleChange} 
-            />
-          </div>
-
-          <div className="input-group">
-            <label>Duration (minutes):</label>
-            <input 
-              type="number" 
-              step="0.1" 
-              name="trip_duration_min" 
-              value={formData.trip_duration_min} 
-              onChange={handleChange} 
-            />
-          </div>
-
-          <div className="input-group">
-            <label>Passengers:</label>
-            <input 
-              type="number" 
-              name="passenger_count" 
-              value={formData.passenger_count} 
-              onChange={handleChange} 
-            />
-          </div>
-
-          <button type="submit" disabled={loading} className="predict-btn">
-            {loading ? '⏳ Calculating...' : '💰 Predict Fare'}
-          </button>
-        </form>
-
-        {/* Error Message */}
-        {error && <div className="error-box">{error}</div>}
-
-        {/* Result Box */}
-        {result && (
-          <div className="result-box">
-            <h2>Estimated Fare: <span className="price">${result.predicted_fare}</span></h2>
-            <p>Expected Range: <b>${result.interval_low} - ${result.interval_high}</b></p>
-          </div>
-        )}
-      </div>
+    <div
+      className={`page-shell page-shell--${direction} ${visible ? 'page-shell--in' : 'page-shell--out'}`}
+      data-page={pageKey}
+      aria-hidden={!isActive}
+    >
+      {children}
     </div>
   )
 }
 
-export default App
+// ── Gold-bar transition overlay ───────────────────────────────────────────────
+function TransitionOverlay({ active }) {
+  return (
+    <div className={`t-overlay ${active ? 't-overlay--active' : ''}`} aria-hidden="true">
+      <div className="t-bar" style={{ '--i': 0 }} />
+      <div className="t-bar" style={{ '--i': 1 }} />
+      <div className="t-bar" style={{ '--i': 2 }} />
+    </div>
+  )
+}
+
+// ── Keyboard navigation hint ──────────────────────────────────────────────────
+function KeyboardHint() {
+  const [visible, setVisible] = useState(true)
+  useEffect(() => {
+    const id = setTimeout(() => setVisible(false), 4500)
+    return () => clearTimeout(id)
+  }, [])
+  return (
+    <div className={`kb-hint ${visible ? 'kb-hint--on' : ''}`} aria-hidden="true">
+      <kbd>←</kbd><kbd>→</kbd>&nbsp; navigate pages
+    </div>
+  )
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+export default function App() {
+  const [page, setPage]           = useState('home')
+  const [transitioning, setTrans] = useState(false)
+  const [direction, setDir]       = useState('forward')
+  const [serverOnline, setServer] = useState(null)   // null=probing  true=ok  false=down
+  const queueRef                  = useRef(null)
+  const transRef                  = useRef(false)     // sync copy for event handlers
+
+  // Keep ref in sync so keyboard handler always sees fresh value
+  useEffect(() => { transRef.current = transitioning }, [transitioning])
+
+  // ── Backend health probe (every 30 s) ─────────────────────────────────────
+  useEffect(() => {
+    const probe = async () => {
+      try {
+        const res  = await fetch('http://127.0.0.1:8000/health', {
+          signal: AbortSignal.timeout(2500),
+        })
+        const data = await res.json()
+        setServer(data.status === 'ok')
+      } catch {
+        setServer(false)
+      }
+    }
+    probe()
+    const id = setInterval(probe, 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // ── Scroll-to-top on page change ──────────────────────────────────────────
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [page])
+
+  // ── Core navigation with animated transition ──────────────────────────────
+  const navigate = useCallback((next) => {
+    if (next === page || transRef.current) {
+      queueRef.current = next
+      return
+    }
+    const fi = PAGES.indexOf(page)
+    const ti = PAGES.indexOf(next)
+    setDir(ti > fi ? 'forward' : 'backward')
+    setTrans(true)
+
+    setTimeout(() => {
+      setPage(next)
+      setTimeout(() => {
+        setTrans(false)
+        if (queueRef.current && queueRef.current !== next) {
+          const q = queueRef.current
+          queueRef.current = null
+          navigate(q)
+        }
+      }, 260)
+    }, 190)
+  }, [page]) // eslint-disable-line
+
+  // ── Arrow-key navigation ──────────────────────────────────────────────────
+  useEffect(() => {
+    const onKey = (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return
+      if (e.key === 'ArrowRight') {
+        navigate(PAGES[(PAGES.indexOf(page) + 1) % PAGES.length])
+      }
+      if (e.key === 'ArrowLeft') {
+        navigate(PAGES[(PAGES.indexOf(page) - 1 + PAGES.length) % PAGES.length])
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [page, navigate])
+
+  return (
+    <div className="app" data-page={page}>
+      <Nav page={page} setPage={navigate} serverOnline={serverOnline} />
+
+      <TransitionOverlay active={transitioning} />
+
+      <div className="pages-container">
+        {PAGES.map((p) => (
+          <PageShell key={p} pageKey={p} isActive={page === p} direction={direction}>
+            {p === 'home'    && <HomePage    setPage={navigate} serverOnline={serverOnline} />}
+            {p === 'predict' && <PredictPage setPage={navigate} />}
+            {p === 'about'   && <AboutPage   setPage={navigate} />}
+          </PageShell>
+        ))}
+      </div>
+
+      <KeyboardHint />
+    </div>
+  )
+}
