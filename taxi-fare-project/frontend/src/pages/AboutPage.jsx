@@ -6,9 +6,9 @@ const STEPS = [
 ]
 
 const TEAM = [
-  { initials: 'AK', name: 'Data Engineering', role: 'Pipeline & Feature Engineering' },
-  { initials: 'ML', name: 'Model Research',   role: 'LightGBM Training & Evaluation' },
-  { initials: 'UI', name: 'Frontend Design',  role: 'React Interface & UX' },
+  { initials: 'AK', name: 'Data Engineers : Selim Ben Fraj & Med Aziz Gafsi', role: 'Pipeline & Feature Engineering' },
+  { initials: 'ML', name: 'Model Researchers : Selim Ben Fraj & Med Aziz Gafsi',   role: 'LightGBM Training & Evaluation' },
+  { initials: 'UI', name: 'Frontend Designers : Selim Ben Fraj & Med Aziz Gafsi',  role: 'React Interface & UX' },
 ]
 
 export default function AboutPage() {
