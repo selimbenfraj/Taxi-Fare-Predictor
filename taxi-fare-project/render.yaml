@@ -1,0 +1,68 @@
+# ═══════════════════════════════════════════════════════════════
+#  FARECAST · render.yaml
+#  Place at: taxi-fare-project/render.yaml
+#
+#  Deploys two services:
+#    1. farecast-backend  → FastAPI (Python web service)
+#    2. farecast-frontend → React/Vite (static site)
+#
+#  After first deploy:
+#    → Copy the backend URL from Render dashboard
+#    → Replace the VITE_API_BASE value below with your real URL
+#    → Push again to redeploy frontend
+# ═══════════════════════════════════════════════════════════════
+
+services:
+
+  # ── 1. FastAPI Backend ────────────────────────────────────────
+  - type: web
+    name: farecast-backend
+    runtime: python
+    region: oregon             # free tier available regions: oregon, ohio, singapore, frankfurt
+    plan: free
+
+    rootDir: .                 # taxi-fare-project/ — where requirements.txt lives
+
+    buildCommand: pip install -r requirements.txt
+
+    # ✅ CRITICAL: --host must be 0.0.0.0 (NOT 127.0.0.1)
+    # --host 0.0.0.0 = accept connections from anywhere (required by Render)
+    # --host 127.0.0.1 = localhost only = Render can't reach it = deploy fails
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+
+    healthCheckPath: /health
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: PYTHONDONTWRITEBYTECODE
+        value: "1"
+
+  # ── 2. React/Vite Frontend ────────────────────────────────────
+  - type: web
+    name: farecast-frontend
+    runtime: static
+    region: oregon
+
+    rootDir: frontend          # taxi-fare-project/frontend/
+
+    buildCommand: npm ci && npm run build
+
+    staticPublishPath: dist    # Vite outputs to frontend/dist/
+
+    # SPA fallback: all unknown routes → index.html
+    # Required for client-side navigation (Home / Predict / About)
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: VITE_API_BASE
+        # ↓ Replace this with your real backend URL after first deploy
+        # Format: https://farecast-backend.onrender.com  (no trailing slash)
+        value: https://farecast-backend.onrender.com
