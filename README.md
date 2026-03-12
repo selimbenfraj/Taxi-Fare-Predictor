@@ -2,7 +2,6 @@
 
 An end-to-end Machine Learning web application that predicts New York City taxi fares based on TLC (Taxi & Limousine Commission) data. Built with **LightGBM**, **FastAPI**, **React**, and fully containerized with **Docker**.
 
-![App Preview](https://images.unsplash.com/photo-1549315183-abf8695d6cb9?q=80&w=1000&auto=format&fit=crop)
 
 ## ✨ Features
 * **Machine Learning Engine:** Trained on millions of NYC Taxi records using LightGBM.
